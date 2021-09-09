@@ -1,10 +1,11 @@
 """
 TO DO:
-Weight Freezing
+When computing weighted validation accuracy, consider not all classes are
+present in the sample
 """
 
 
-from typing import Tuple
+from typing import Sequence, Tuple
 
 import pytorch_lightning as plight
 import torch
@@ -17,11 +18,12 @@ from torchvision.transforms import Normalize
 class FCN_ResNet50(nn.Module):
 
     def __init__(self,
-                 n_classes: int = 4):
+                 n_classes: int = 4, freeze: bool = True):
 
         super().__init__()
 
         self.n_classes = n_classes
+        self.freeze = freeze
 
         self.input_norm = Normalize([0.4778, 0.4581, 0.4503], [
                                     0.2596, 0.2531, 0.2519])
@@ -29,8 +31,9 @@ class FCN_ResNet50(nn.Module):
         self.model = fcn_resnet50(pretrained=True)
 
         # Freeze weights
-        for param in self.model.parameters():
-            param.requires_grad = False
+        if self.freeze:
+            for param in self.model.parameters():
+                param.requires_grad = False
 
         self.model.classifier = nn.Sequential(
             nn.Conv2d(2048, 512, kernel_size=3,
@@ -50,11 +53,17 @@ class FCN_ResNet50(nn.Module):
 
 class FCN_ResNet50_Lightning(plight.LightningModule):
 
-    def __init__(self, n_classes: int = 4):
+    def __init__(self, n_classes: int = 4,
+                 freeze: bool = True,
+                 learning_rate: float = 1e-4,
+                 weight: Sequence[float] = [1, 1, 1, 1]):
 
         super().__init__()
         self.n_classes = n_classes
-        self.model = FCN_ResNet50(n_classes)
+        self.freeze = freeze
+        self.learning_rate = learning_rate
+        self.weight = nn.Parameter(torch.Tensor(weight), requires_grad=False)
+        self.model = FCN_ResNet50(n_classes, freeze)
 
     def forward(self, x):
 
@@ -62,7 +71,7 @@ class FCN_ResNet50_Lightning(plight.LightningModule):
 
     def configure_optimizers(self):
 
-        optimizer = torch.optim.Adam(self.parameters(), lr=1e-4)
+        optimizer = torch.optim.Adam(self.parameters(), lr=self.learning_rate)
 
         return optimizer
 
@@ -72,7 +81,7 @@ class FCN_ResNet50_Lightning(plight.LightningModule):
 
         pred = self(img)
 
-        loss = F.cross_entropy(pred, labels)
+        loss = F.cross_entropy(pred, labels, weight=self.weight)
 
         self.log("Training loss", loss, on_step=False, on_epoch=True)
 
