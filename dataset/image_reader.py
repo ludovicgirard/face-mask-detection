@@ -13,6 +13,10 @@ class FaceMaskImage:
 
     def open(self) -> torch.Tensor:
 
-        img = TO_TENSOR(Image.open(self.path))
+        img = Image.open(self.path)
 
-        return img
+        if img.mode == 'RGBA':
+
+            img = img.convert('RGB')
+
+        return TO_TENSOR(img)

@@ -38,8 +38,9 @@ class AnnotationCollection:
     Contains the multiple annotations related to one single image
     """
 
-    def __init__(self, annotation_list: List[Annotation], img_size: Tuple[int]):
+    def __init__(self, img_name: str, annotation_list: List[Annotation], img_size: Tuple[int]):
 
+        self.img_name = img_name
         self.annotation_list = annotation_list
         self.img_size = img_size
 
@@ -62,7 +63,7 @@ class AnnotationCollection:
             label_tensor[annotation.y_coords[0]:annotation.y_coords[1],
                          annotation.x_coords[0]:annotation.x_coords[1]] = value
 
-        return label_tensor
+        return label_tensor.to(torch.long)
 
 
 def read_PASCAL_VOC_annotations(filename: str) -> AnnotationCollection:
@@ -74,6 +75,8 @@ def read_PASCAL_VOC_annotations(filename: str) -> AnnotationCollection:
     tree = ET.parse(filename)
     root = tree.getroot()
     annotation_list = []
+
+    img_name = root.find("filename").text
 
     img_size = (int(root.find("size/height").text),
                 int(root.find("size/width").text))
@@ -93,7 +96,7 @@ def read_PASCAL_VOC_annotations(filename: str) -> AnnotationCollection:
         annotation_list.append(Annotation(
             label, x_coords, y_coords, pose, truncated, occluded, difficult))
 
-    return AnnotationCollection(annotation_list, img_size)
+    return AnnotationCollection(img_name, annotation_list, img_size)
 
 
 if __name__ == '__main__':
