@@ -65,7 +65,7 @@ class AnnotationCollection:
         return label_tensor
 
 
-def read_PASCAL_VOC_xml_file(filename: str) -> AnnotationCollection:
+def read_PASCAL_VOC_annotations(filename: str) -> AnnotationCollection:
     """
     thanks Stack Overflow :
         https://stackoverflow.com/questions/53317592/reading-pascal-voc-annotations-in-python
@@ -99,5 +99,5 @@ def read_PASCAL_VOC_xml_file(filename: str) -> AnnotationCollection:
 if __name__ == '__main__':
 
     file = '../../data/annotations/maksssksksss0.xml'
-    a = read_PASCAL_VOC_xml_file(file)
+    a = read_PASCAL_VOC_annotations(file)
     a.to_tensor()
