@@ -7,6 +7,7 @@ import matplotlib.patches as patches
 import matplotlib.pyplot as plt
 import torch
 from annotation_reader import *
+from dataset import *
 from PIL import Image
 
 LABEL_TO_COLOR = {"without_mask": 'red',
@@ -14,7 +15,10 @@ LABEL_TO_COLOR = {"without_mask": 'red',
                   "mask_weared_incorrect": 'blue'}
 
 
-def display_annotation(img: torch.Tensor, annotations: AnnotationCollection) -> None:
+def display_annotation(dataset: FaceMaskDetectionDataset, idx: int) -> None:
+
+    img = dataset[idx][0].permute(1, 2, 0)
+    annotations = dataset.annotations[dataset.keys[idx]]
 
     fig, ax = plt.subplots()
     ax.imshow(img)
@@ -34,20 +38,24 @@ def display_annotation(img: torch.Tensor, annotations: AnnotationCollection) -> 
     plt.show()
 
 
-def display_few_samples(data_directory):
-    pass
+def display_augmented_samples(dataset: FaceMaskDetectionDataset, idx: int):
 
+    augmented_img = dataset[idx][0]
+    reference_img = dataset.images[dataset.keys[idx]]
 
-def display_specific_samples(data_directory, difficult=True):
-    pass
+    if not dataset.load_to_RAM:
+        reference_img = reference_img.open()
+
+    plt.subplot(1, 2, 1)
+    plt.imshow(reference_img.permute(1, 2, 0))
+    plt.subplot(1, 2, 2)
+    plt.imshow(augmented_img.permute(1, 2, 0))
+    plt.show()
 
 
 if __name__ == '__main__':
 
-    file = '../../data/annotations/maksssksksss0.xml'
-    img = '../../data/images/maksssksksss0.png'
+    train, val, test = get_datasets('../../data', load_to_RAM=True)
+    # train = FaceMaskDetectionDataset('../../data', load_to_RAM=True)
 
-    annotation = read_PASCAL_VOC_xml_file(file)
-    img = Image.open(img)
-
-    display_annotation(img, annotation)
+    display_augmented_samples(train, 341)
