@@ -1,5 +1,5 @@
 """
-TO DO:
+TODO:
 When computing weighted validation accuracy, consider not all classes are
 present in the sample
 """
@@ -18,17 +18,20 @@ from torchvision.transforms import Normalize
 class FCN_ResNet50(nn.Module):
 
     def __init__(self,
-                 n_classes: int = 4, freeze: bool = True):
+                 n_classes: int = 4,
+                 freeze: bool = True,
+                 pretrained: bool = True):
 
         super().__init__()
 
         self.n_classes = n_classes
         self.freeze = freeze
+        self.pretrained = pretrained
 
         self.input_norm = Normalize([0.4778, 0.4581, 0.4503], [
                                     0.2596, 0.2531, 0.2519])
 
-        self.model = fcn_resnet50(pretrained=True)
+        self.model = fcn_resnet50(pretrained=self.pretrained)
 
         # Freeze weights
         if self.freeze:
@@ -56,14 +59,18 @@ class FCN_ResNet50_Lightning(plight.LightningModule):
     def __init__(self, n_classes: int = 4,
                  freeze: bool = True,
                  learning_rate: float = 1e-4,
-                 weight: Sequence[float] = [1, 1, 1, 1]):
+                 pretrained: bool = True,
+                 weight: Sequence[float] = [1, 1, 1, 1],
+                 milestones: Sequence[int] = None):
 
         super().__init__()
         self.n_classes = n_classes
         self.freeze = freeze
         self.learning_rate = learning_rate
+        self.pretrained = pretrained
         self.weight = nn.Parameter(torch.Tensor(weight), requires_grad=False)
-        self.model = FCN_ResNet50(n_classes, freeze)
+        self.model = FCN_ResNet50(n_classes, freeze, pretrained)
+        self.milestones = milestones
 
     def forward(self, x):
 
@@ -72,8 +79,14 @@ class FCN_ResNet50_Lightning(plight.LightningModule):
     def configure_optimizers(self):
 
         optimizer = torch.optim.Adam(self.parameters(), lr=self.learning_rate)
+        _return = optimizer
+        if self.milestones is not None:
+            scheduler = torch.optim.lr_scheduler.MultiStepLR(
+                optimizer, self.milestones, 0.1)
 
-        return optimizer
+            _return = [optimizer], [scheduler]
+
+        return _return
 
     def training_step(self, batch, batch_idx):
 
@@ -98,21 +111,22 @@ class FCN_ResNet50_Lightning(plight.LightningModule):
         val_acc = (pred_ == labels).sum() / labels.numel()
 
         # Per-class accuracy:
-        class_accuracy = torch.zeros((self.n_classes,))
+        class_iou = torch.zeros((self.n_classes,))
         for c in range(self.n_classes):
             if (labels == c).sum() != 0:
-                acc = torch.logical_and(
-                    (labels == c), (pred_ == c)).sum() / (labels == c).sum()
-                class_accuracy[c] = acc
+                iou = torch.logical_and(
+                    (labels == c), (pred_ == c)).sum() / torch.logical_or(
+                    (labels == c), (pred_ == c)).sum()
 
-        class_accuracy = class_accuracy.mean()
+                self.log("class_{}_iou".format(c), iou,
+                         on_step=False, on_epoch=True)
+
+                class_iou[c] = iou
 
         self.log("val_loss", loss, on_step=False, on_epoch=True)
         self.log("val_acc", val_acc, on_step=False, on_epoch=True)
-        self.log("val_acc_per_class", class_accuracy,
-                 on_step=False, on_epoch=True)
 
-        return class_accuracy
+        return loss
 
 
 if __name__ == '__main__':
