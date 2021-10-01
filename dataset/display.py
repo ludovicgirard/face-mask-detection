@@ -3,6 +3,8 @@ TO DO:
 Write a few more display functions
 """
 
+from typing import Sequence
+
 import matplotlib.patches as patches
 import matplotlib.pyplot as plt
 import torch
@@ -22,6 +24,7 @@ def display_annotation(dataset: FaceMaskDetectionDataset, idx: int) -> None:
 
     fig, ax = plt.subplots()
     ax.imshow(img)
+    ax.axis('off')
 
     for annotation in annotations:
 
@@ -35,22 +38,63 @@ def display_annotation(dataset: FaceMaskDetectionDataset, idx: int) -> None:
             edgecolor=LABEL_TO_COLOR[annotation.label], facecolor='none')
         ax.add_patch(rect)
 
+    plt.tight_layout()
     plt.show()
 
 
-def display_augmented_samples(dataset: FaceMaskDetectionDataset, idx: int):
+def display_augmented_samples(dataset: FaceMaskDetectionDataset, idx: Sequence[int]):
 
-    augmented_img = dataset[idx][0]
-    reference_img = dataset.images[dataset.keys[idx]]
+    if isinstance(idx, int):
+        idx = [idx]
 
-    if not dataset.load_to_RAM:
-        reference_img = reference_img.open()
+    for count, i in enumerate(idx):
 
-    plt.subplot(1, 2, 1)
-    plt.imshow(reference_img.permute(1, 2, 0))
-    plt.subplot(1, 2, 2)
-    plt.imshow(augmented_img.permute(1, 2, 0))
+        augmented_img = dataset[i][0]
+        reference_img = dataset.images[dataset.keys[i]]
+
+        if not dataset.load_to_RAM:
+            reference_img = reference_img.open()
+
+        plt.subplot(len(idx), 2, (count * 2) + 1)
+        plt.axis('off')
+        plt.imshow(reference_img.permute(1, 2, 0))
+        plt.subplot(len(idx), 2, (count * 2) + 2)
+        plt.axis('off')
+        plt.imshow(augmented_img.permute(1, 2, 0))
+
+    plt.tight_layout()
     plt.show()
+
+
+def display_inferences(model: torch.nn.Module,
+                       dataset: FaceMaskDetectionDataset,
+                       idx: Sequence[int],
+                       device=None):
+
+    if isinstance(idx, int):
+        idx = [idx]
+
+    if device == None:
+        if torch.cuda.is_available():
+            device = 'cuda'
+        else:
+            device = 'cpu'
+
+    model.to(device)
+
+    for count, i in enumerate(idx):
+
+        img = dataset[i][0]
+        inference = model(img.to(device).unsqueeze(0)).to('cpu').detach()
+
+        plt.subplot(len(idx), 2, (count * 2) + 1)
+        plt.axis('off')
+        plt.imshow(img.permute(1, 2, 0))
+        plt.subplot(len(idx), 2, (count * 2) + 2)
+        plt.axis('off')
+        plt.imshow(inference.squeeze(), cmap='gist_')
+    plt.tight_layout()
+    plt.plot()
 
 
 if __name__ == '__main__':
