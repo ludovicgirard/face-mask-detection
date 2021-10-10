@@ -69,7 +69,10 @@ def display_augmented_samples(dataset: FaceMaskDetectionDataset, idx: Sequence[i
 def display_inferences(model: torch.nn.Module,
                        dataset: FaceMaskDetectionDataset,
                        idx: Sequence[int],
-                       device=None):
+                       device: torch.device = None) -> None:
+
+    COLORS_BY_CLASS = {0: [0, 0, 0], 1: [255, 0, 0],
+                       2: [0, 255, 0], 3: [0, 0, 255]}
 
     if isinstance(idx, int):
         idx = [idx]
@@ -81,25 +84,30 @@ def display_inferences(model: torch.nn.Module,
             device = 'cpu'
 
     model.to(device)
+    model.eval()
 
     for count, i in enumerate(idx):
 
         img = dataset[i][0]
-        inference = model(img.to(device).unsqueeze(0)).to('cpu').detach()
+        inference = torch.argmax(model(img.to(device).unsqueeze(0)).to(
+            'cpu').detach().squeeze(), 0).to("cpu")
 
-        plt.subplot(len(idx), 2, (count * 2) + 1)
-        plt.axis('off')
+        display_img = torch.zeros(
+            inference.shape[0], inference.shape[1], 3)
+
+        for c in range(model.n_classes):
+            display_img[inference == c, :] = torch.Tensor(COLORS_BY_CLASS[c])
+
+        plt.subplot(len(idx), 1, count + 1)
         plt.imshow(img.permute(1, 2, 0))
-        plt.subplot(len(idx), 2, (count * 2) + 2)
+        plt.imshow(display_img, cmap='gist_heat', alpha=0.5)
         plt.axis('off')
-        plt.imshow(inference.squeeze(), cmap='gist_')
     plt.tight_layout()
     plt.plot()
 
 
 if __name__ == '__main__':
 
-    train, val, test = get_datasets('../../data', load_to_RAM=True)
-    # train = FaceMaskDetectionDataset('../../data', load_to_RAM=True)
+    train, val, test = get_datasets('../../data', load_to_RAM=False)
 
     display_augmented_samples(train, 341)
