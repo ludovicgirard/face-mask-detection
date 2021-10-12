@@ -6,7 +6,6 @@ TO_TENSOR = ToTensor()
 
 
 class FaceMaskImage:
-
     def __init__(self, path: str):
 
         self.path = path
@@ -15,8 +14,8 @@ class FaceMaskImage:
 
         img = Image.open(self.path)
 
-        if img.mode == 'RGBA':
+        if img.mode == "RGBA":
 
-            img = img.convert('RGB')
+            img = img.convert("RGB")
 
         return TO_TENSOR(img)
