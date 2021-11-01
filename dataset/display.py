@@ -8,8 +8,8 @@ from typing import Sequence
 import matplotlib.patches as patches
 import matplotlib.pyplot as plt
 import torch
-from annotation_reader import *
-from dataset import *
+from .annotation_reader import *
+from .dataset import *
 from PIL import Image
 
 LABEL_TO_COLOR = {
@@ -18,34 +18,46 @@ LABEL_TO_COLOR = {
     "mask_weared_incorrect": "blue",
 }
 
+INDEX_TO_COLOR = list(LABEL_TO_COLOR.values())
+
 
 def display_annotation(dataset: FaceMaskDetectionDataset, idx: int) -> None:
 
-    img = dataset[idx][0].permute(1, 2, 0)
-    annotations = dataset.annotations[dataset.keys[idx]]
+    switch_type = False
+
+    if dataset.dataset_type == "segmentation":
+        switch_type = True
+        dataset.dataset_type = "object_detection"
+
+    img, annotations = dataset[idx]
 
     fig, ax = plt.subplots()
-    ax.imshow(img)
+    ax.imshow(img.permute(1, 2, 0))
     ax.axis("off")
 
-    for annotation in annotations:
+    for idx in range(len(annotations["boxes"])):
 
-        xmin = annotation.x_coords[0]
-        ymin = annotation.y_coords[0]
-        xmax = annotation.x_coords[1]
-        ymax = annotation.y_coords[1]
+        boxes = annotations["boxes"][idx]
+
+        xmin = boxes[0]
+        ymin = boxes[1]
+        xmax = boxes[2]
+        ymax = boxes[3]
 
         rect = patches.Rectangle(
             (xmin, ymin),
             xmax - xmin,
             ymax - ymin,
-            edgecolor=LABEL_TO_COLOR[annotation.label],
+            edgecolor=INDEX_TO_COLOR[annotations["labels"][idx] - 1],
             facecolor="none",
         )
         ax.add_patch(rect)
 
     plt.tight_layout()
     plt.show()
+
+    if switch_type:
+        dataset.dataset_type = "segmentation"
 
 
 def display_augmented_samples(dataset: FaceMaskDetectionDataset, idx: Sequence[int]):
@@ -77,6 +89,7 @@ def display_inferences(
     dataset: FaceMaskDetectionDataset,
     idx: Sequence[int],
     device: torch.device = None,
+    threshold=0.5,
 ) -> None:
 
     COLORS_BY_CLASS = {0: [0, 0, 0], 1: [255, 0, 0], 2: [0, 255, 0], 3: [0, 0, 255]}
@@ -96,25 +109,44 @@ def display_inferences(
     for count, i in enumerate(idx):
 
         img = dataset[i][0]
-        inference = torch.argmax(
-            model(img.to(device).unsqueeze(0)).to("cpu").detach().squeeze(), 0
-        ).to("cpu")
+        inference = model(img.to(device).unsqueeze(0))
 
-        display_img = torch.zeros(inference.shape[0], inference.shape[1], 3)
+        boxes = inference[0]["boxes"].to("cpu").detach()
+        labels = inference[0]["labels"].to("cpu").detach()
+        scores = inference[0]["scores"].to("cpu").detach()
 
-        for c in range(model.n_classes):
-            display_img[inference == c, :] = torch.Tensor(COLORS_BY_CLASS[c])
+        fig, ax = plt.subplots()
+        ax.imshow(img.permute(1, 2, 0))
+        ax.axis("off")
 
-        plt.subplot(len(idx), 1, count + 1)
-        plt.imshow(img.permute(1, 2, 0))
-        plt.imshow(display_img, alpha=0.5)
-        plt.axis("off")
-    plt.tight_layout()
-    plt.show()
+        for idx2 in range(boxes.shape[0]):
+
+            box = boxes[idx2]
+            label = labels[idx2]
+            score = scores[idx2]
+
+            xmin = box[0]
+            ymin = box[1]
+            xmax = box[2]
+            ymax = box[3]
+
+            rect = patches.Rectangle(
+                (xmin, ymin),
+                xmax - xmin,
+                ymax - ymin,
+                edgecolor=INDEX_TO_COLOR[label - 1],
+                facecolor="none",
+            )
+            ax.add_patch(rect)
+
+        plt.tight_layout()
+        plt.show()
 
 
 if __name__ == "__main__":
 
-    train, val, test = get_datasets("../../data", load_to_RAM=False)
+    train, val, test = get_datasets(
+        "../../data", load_to_RAM=False, dataset_type="object_detection"
+    )
 
-    display_augmented_samples(train, 341)
+    display_annotation(train, 341)

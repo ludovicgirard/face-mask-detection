@@ -63,6 +63,29 @@ class AnnotationCollection:
 
         return self.annotation_list[idx]
 
+    def to_object_detection_label(self) -> dict:
+
+        label = {}
+        label["boxes"] = []
+        label["labels"] = []
+
+        for annotation in self.annotation_list:
+
+            label["boxes"].append(
+                [
+                    int(annotation.x_coords[0]),
+                    int(annotation.y_coords[0]),
+                    int(annotation.x_coords[1]),
+                    int(annotation.y_coords[1]),
+                ]
+            )
+            label["labels"].append(LABEL_TO_VALUE[annotation.label])
+
+        label["boxes"] = torch.tensor(label["boxes"], dtype=torch.float32)
+        label["labels"] = torch.tensor(label["labels"], dtype=torch.int64)
+
+        return label
+
     def to_tensor(self, onehot=False) -> torch.Tensor:
 
         label_tensor = torch.zeros(self.img_size)

@@ -9,11 +9,11 @@ from copy import deepcopy
 from typing import Callable, Sequence, Tuple
 
 import torch
-from annotation_reader import *
-from image_reader import *
+from .annotation_reader import *
+from .image_reader import *
 from torch.utils.data import Subset
 from torchvision.transforms import ColorJitter, Compose, GaussianBlur, RandomEqualize
-from transforms import RandomCrop
+from .transforms import RandomCrop
 
 DATASET_MEAN = [0.4778, 0.4581, 0.4503]
 DATASET_STD = [0.2596, 0.2531, 0.2519]
@@ -26,6 +26,10 @@ TRAINING_CROP = RandomCrop((256, 256))
 
 
 class FaceMaskDetectionDataset(torch.utils.data.Dataset):
+    """
+    Should be instantiated via the load_from_directory and load_from_json methods.
+    """
+
     def __init__(
         self,
         keys: Sequence[str],
@@ -34,6 +38,7 @@ class FaceMaskDetectionDataset(torch.utils.data.Dataset):
         transforms: Callable = None,
         load_to_RAM: bool = False,
         crop: Callable = None,
+        dataset_type: str = "object_detection",
     ):
 
         self.keys = keys
@@ -42,6 +47,15 @@ class FaceMaskDetectionDataset(torch.utils.data.Dataset):
         self.load_to_RAM = load_to_RAM
         self.transforms = transforms
         self.crop = crop
+
+        if dataset_type not in ["object_detection", "segmentation"]:
+            raise ValueError(
+                "{} is not a valid dataset_type. Valid types are: 'object_detection', 'segmentation'".format(
+                    dataset_type
+                )
+            )
+        else:
+            self.dataset_type = dataset_type
 
         self.paths = {
             "keys": deepcopy(self.keys),
@@ -53,7 +67,12 @@ class FaceMaskDetectionDataset(torch.utils.data.Dataset):
 
             for key in self.keys:
                 self.images[key] = self.images[key].open()
-                self.annotations[key] = self.annotations[key].to_tensor()
+                if self.dataset_type == "segmentation":
+                    self.annotations[key] = self.annotations[key].to_tensor()
+                elif self.dataset_type == "object_detection":
+                    self.annotations[key] = self.annotations[
+                        key
+                    ].to_object_detection_label()
 
     @staticmethod
     def load_from_directory(data_directory: str, **args):
@@ -123,7 +142,11 @@ class FaceMaskDetectionDataset(torch.utils.data.Dataset):
 
         if not self.load_to_RAM:
             image = image.open()
-            label = label.to_tensor()
+
+            if self.dataset_type == "segmentation":
+                label = label.to_tensor()
+            elif self.dataset_type == "object_detection":
+                label = label.to_object_detection_label()
 
         if self.transforms is not None:
 
@@ -134,6 +157,19 @@ class FaceMaskDetectionDataset(torch.utils.data.Dataset):
             image, label = self.crop(image, label)
 
         return image, label
+
+
+def collate_fn(batch):
+
+    img = torch.zeros((len(batch), *batch[0][0].shape))
+    labels = []
+
+    for idx in range(len(batch)):
+
+        img[idx] = batch[idx][0]
+        labels.append(batch[idx][1])
+
+    return img, labels
 
 
 def subset(dataset: FaceMaskDetectionDataset, index: Sequence[int]):
@@ -147,14 +183,13 @@ def subset(dataset: FaceMaskDetectionDataset, index: Sequence[int]):
 def get_datasets(
     data_directory: str,
     split_sizes: Tuple[float] = (0.6, 0.2, 0.2),
-    load_to_RAM: bool = False,
-    save_partition=False,
-    load_partition=False,
+    save_partition: str = False,
+    load_partition: str = False,
+    train_set_transforms: Callable = TRAINING_TRANSFORMS,
+    **args
 ):
 
-    full_dataset = FaceMaskDetectionDataset.load_from_directory(
-        data_directory, load_to_RAM=load_to_RAM
-    )
+    full_dataset = FaceMaskDetectionDataset.load_from_directory(data_directory, **args)
 
     train_set_samples = int(split_sizes[0] * len(full_dataset))
     val_set_samples = train_set_samples + int(split_sizes[1] * len(full_dataset))
@@ -176,7 +211,7 @@ def get_datasets(
 
     del full_dataset
 
-    train_set.transforms = TRAINING_TRANSFORMS
+    train_set.transforms = train_set_transforms
     train_set.crop = TRAINING_CROP
 
     return train_set, val_set, test_set
@@ -193,9 +228,15 @@ def get_loaders(
         data_directory, split_sizes, load_to_RAM, **args
     )
 
-    train_loader = torch.utils.data.DataLoader(train_set, batch_size=32, num_workers=4)
-    val_loader = torch.utils.data.DataLoader(val_set, batch_size=1, num_workers=4)
-    test_loader = torch.utils.data.DataLoader(test_set, batch_size=1, num_workers=4)
+    train_loader = torch.utils.data.DataLoader(
+        train_set, batch_size=8, num_workers=8, collate_fn=collate_fn
+    )
+    val_loader = torch.utils.data.DataLoader(
+        val_set, batch_size=1, num_workers=4, collate_fn=collate_fn
+    )
+    test_loader = torch.utils.data.DataLoader(
+        test_set, batch_size=1, num_workers=4, collate_fn=collate_fn
+    )
 
     return train_loader, val_loader, test_loader
 
