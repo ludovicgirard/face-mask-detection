@@ -18,6 +18,7 @@ class RetinaNet(nn.Module):
         pretrained: bool = True,
         trainable_backbone_layers: int = 5,
         nms_threshold: float = 0.5,
+        score_threshold: float = 0.05,
     ):
 
         super().__init__()
@@ -26,6 +27,7 @@ class RetinaNet(nn.Module):
         self.pretrained = pretrained
         self.trainable_backbone_layers = trainable_backbone_layers
         self.nms_threshold = nms_threshold
+        self.apply_nms = False
 
         self.input_norm = Normalize([0.4778, 0.4581, 0.4503], [0.2596, 0.2531, 0.2519])
 
@@ -33,6 +35,8 @@ class RetinaNet(nn.Module):
             pretrained=self.pretrained,
             trainable_backbone_layers=trainable_backbone_layers,
         )
+
+        self.model.score_thresh = score_threshold
 
         # Overwrite classification head
         n_anchors = self.model.anchor_generator.num_anchors_per_location()[0]
@@ -52,6 +56,8 @@ class RetinaNet(nn.Module):
 
             x = self.model(x)
 
+        if self.apply_nms:
+
             for idx in range(len(x)):
 
                 x_ = x[idx]
@@ -63,21 +69,33 @@ class RetinaNet(nn.Module):
 
         return x
 
+    def inference_mode(self, value: bool = True):
+
+        self.apply_nms = value
+
+    def set_score_threshold(self, value):
+
+        self.model.score_thresh = value
+
 
 class RetinaNetLightning(plight.LightningModule):
     def __init__(
         self,
         learning_rate: float = 1e-4,
+        weight_decay: float = 0.01,
         classification_loss_weight: float = 1.0,
         regression_loss_weight: float = 1.0,
-        **args
+        scheduler_patience=5,
+        **args,
     ):
 
         super().__init__()
         self.learning_rate = learning_rate
+        self.weight_decay = weight_decay
         self.model = RetinaNet(**args)
         self.classification_loss_weight = classification_loss_weight
         self.regression_loss_weight = regression_loss_weight
+        self.scheduler_patience = scheduler_patience
 
     def forward(self, x, *args):
 
@@ -85,9 +103,17 @@ class RetinaNetLightning(plight.LightningModule):
 
     def configure_optimizers(self):
 
-        optimizer = torch.optim.Adam(self.parameters(), lr=self.learning_rate)
+        optimizer = torch.optim.AdamW(
+            self.parameters(), lr=self.learning_rate, weight_decay=self.weight_decay
+        )
+        scheduler = {
+            "scheduler": torch.optim.lr_scheduler.ReduceLROnPlateau(
+                optimizer, patience=self.scheduler_patience, mode="max"
+            ),
+            "monitor": "mIOU",
+        }
 
-        return optimizer
+        return [optimizer], [scheduler]
 
     def training_step(self, batch, batch_idx):
 
@@ -133,9 +159,10 @@ class RetinaNetLightning(plight.LightningModule):
 
         miou = iou.mean()  # Exclude background class?
 
-        self.log("mIOU", miou)
+        if torch.isnan(miou):
+            miou = 0
 
-        return miou
+        self.log("mIOU", miou)
 
     def test_step(self, batch, batch_idx):
 
@@ -157,6 +184,14 @@ class RetinaNetLightning(plight.LightningModule):
             class_iou[c, 1] = torch.logical_or((labels == c), (pred_ == c)).sum()
 
         return class_iou
+
+    def on_validation_start(self):
+
+        self.model.inference_mode(True)
+
+    def on_validation_end(self):
+
+        self.model.inference_mode(False)
 
 
 if __name__ == "__main__":
