@@ -13,7 +13,7 @@ from .utils import precompute_mIOU
 
 
 def get_model(output_shape, **args):
-    model = models.detection.fasterrcnn_resnet50_fpn(pretrained=True, **args)
+    model = models.detection.fasterrcnn_resnet50_fpn(**args)
     in_features = model.roi_heads.box_predictor.cls_score.in_features
     model.roi_heads.box_predictor = models.detection.faster_rcnn.FastRCNNPredictor(
         in_features, output_shape
@@ -21,14 +21,15 @@ def get_model(output_shape, **args):
 
     return model
 
+
 class Faster_RCNN(nn.Module):
-    def __init__(self, n_classes=4, nms_threshold=0.5, score_thresh=0.05):
+    def __init__(self, n_classes=4, nms_threshold=0.5, score_thresh=0.05, **args):
 
         super().__init__()
 
         self.n_classes = n_classes
 
-        self.model = get_model(n_classes, box_score_thresh=score_thresh)
+        self.model = get_model(n_classes, box_score_thresh=score_thresh, **args)
         self.apply_nms = False
         self.nms_threshold = nms_threshold
 

@@ -69,21 +69,23 @@ def parse_args():
         AUTO_SELECT_MODEL = True
 
     elif args.backbone.lower() == "faster_rcnn":
-        MODEL = models.Faster_RCNN_Lightning(nms_threshold=0.2, score_thresh=0.4)
+        MODEL = models.Faster_RCNN_Lightning(
+            nms_threshold=0.2, score_thresh=0.4, pretrained=False
+        )
         MODEL.load_state_dict(
             torch.load(os.path.join(PARENT, "weights/faster_rcnn_lightning.pt"))
         )
 
     elif args.backbone.lower() == "mobilenet":
-        MODEL = models.MobileNet_Lightning(nms_threshold=0.2, score_thresh=0.4)
+        MODEL = models.MobileNet_Lightning(
+            nms_threshold=0.2, score_thresh=0.4, pretrained=False
+        )
         MODEL.load_state_dict(
             torch.load(os.path.join(PARENT, "weights/faster_rcnn_mobilenet.pt"))
         )
 
     elif args.backbone.lower() == "retinanet":
-        MODEL = models.RetinaNetLightning(
-            nms_threshold=0.2,
-        )
+        MODEL = models.RetinaNetLightning(nms_threshold=0.2, pretrained=False)
         MODEL.load_state_dict(torch.load(os.path.join(PARENT, "weights/retinanet.pt")))
         MODEL.model.set_score_threshold(0.3)
 
