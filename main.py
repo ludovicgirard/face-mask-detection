@@ -1,8 +1,15 @@
 import cv2
-import models
 import torch
 import argparse
 import time
+import warnings
+import os
+import sys
+
+PARENT = os.path.dirname(__file__)
+sys.path.append(PARENT)
+
+import models
 
 LABEL_TO_COLOR = {
     "without_mask": "red",
@@ -63,17 +70,21 @@ def parse_args():
 
     elif args.backbone.lower() == "faster_rcnn":
         MODEL = models.Faster_RCNN_Lightning(nms_threshold=0.2, score_thresh=0.4)
-        MODEL.load_state_dict(torch.load("weights/faster_rcnn_lightning.pt"))
+        MODEL.load_state_dict(
+            torch.load(os.path.join(PARENT, "weights/faster_rcnn_lightning.pt"))
+        )
 
     elif args.backbone.lower() == "mobilenet":
         MODEL = models.MobileNet_Lightning(nms_threshold=0.2, score_thresh=0.4)
-        MODEL.load_state_dict(torch.load("weights/faster_rcnn_mobilenet.pt"))
+        MODEL.load_state_dict(
+            torch.load(os.path.join(PARENT, "weights/faster_rcnn_mobilenet.pt"))
+        )
 
     elif args.backbone.lower() == "retinanet":
         MODEL = models.RetinaNetLightning(
             nms_threshold=0.2,
         )
-        MODEL.load_state_dict(torch.load("weights/retinanet.pt"))
+        MODEL.load_state_dict(torch.load(os.path.join(PARENT, "weights/retinanet.pt")))
         MODEL.model.set_score_threshold(0.3)
 
     else:
@@ -85,7 +96,9 @@ def parse_args():
     if AUTO_SELECT_MODEL:
 
         MODEL = models.MobileNet_Lightning(nms_threshold=0.2, score_thresh=0.4)
-        MODEL.load_state_dict(torch.load("weights/faster_rcnn_mobilenet.pt"))
+        MODEL.load_state_dict(
+            torch.load(os.path.join(PARENT, "weights/faster_rcnn_mobilenet.pt"))
+        )
         print("Model MobileNet V3 was selected automatically")
 
     MODEL.eval()
@@ -109,6 +122,12 @@ def display_video_feed(model, device, video, output, downsample):
 
     cam = cv2.VideoCapture(video)
     fps = cam.get(cv2.CAP_PROP_FPS)
+    size = (int(cam.get(3)), int(cam.get(4)))
+
+    if output is not None:
+        writer = cv2.VideoWriter(output, cv2.VideoWriter_fourcc(*"MJPG"), fps, size)
+    else:
+        writer = None
 
     frametime = 1 / fps  # [s]
 
@@ -133,7 +152,7 @@ def display_video_feed(model, device, video, output, downsample):
 
         inference = model(img_tensor)
 
-        display_inference(img, inference, downsample, frame_timer)
+        display_inference(img, inference, downsample, frame_timer, writer)
 
         current_frametime = time.perf_counter() - frame_timer
 
@@ -143,10 +162,12 @@ def display_video_feed(model, device, video, output, downsample):
         if cv2.waitKey(1) == 27:
             break  # esc to quit
 
+    cam.release()
+    writer.release()
     cv2.destroyAllWindows()
 
 
-def display_inference(img, inference, downsample, frame_timer):
+def display_inference(img, inference, downsample, frame_timer, writer):
 
     boxes = inference[0]["boxes"].to("cpu").detach()
     labels = inference[0]["labels"].to("cpu").detach()
@@ -178,6 +199,10 @@ def display_inference(img, inference, downsample, frame_timer):
         2,
         cv2.LINE_AA,
     )
+
+    if writer is not None:
+        writer.write(img)
+
     cv2.imshow("VIDEO", img)
 
 
@@ -187,4 +212,5 @@ def main():
 
 
 if __name__ == "__main__":
+    warnings.filterwarnings("ignore", message="torch.meshgrid")
     main()
