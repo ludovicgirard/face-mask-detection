@@ -1,7 +1,3 @@
-"""
-Adapted from Salma Bendaoud's code
-"""
-
 import torch
 import torch.nn as nn
 import torch.functional as F
@@ -13,7 +9,7 @@ from .utils import precompute_mIOU
 
 
 def get_model(output_shape, **args):
-    model = models.detection.fasterrcnn_resnet50_fpn(pretrained=True, **args)
+    model = models.detection.fasterrcnn_mobilenet_v3_large_fpn(pretrained=True, **args)
     in_features = model.roi_heads.box_predictor.cls_score.in_features
     model.roi_heads.box_predictor = models.detection.faster_rcnn.FastRCNNPredictor(
         in_features, output_shape
@@ -21,7 +17,8 @@ def get_model(output_shape, **args):
 
     return model
 
-class Faster_RCNN(nn.Module):
+
+class MobileNet(nn.Module):
     def __init__(self, n_classes=4, nms_threshold=0.5, score_thresh=0.05):
 
         super().__init__()
@@ -60,14 +57,16 @@ class Faster_RCNN(nn.Module):
         self.apply_nms = value
 
 
-class Faster_RCNN_Lightning(plight.LightningModule):
-    def __init__(self, learning_rate=0.001, momentum=0.9, weight_decay=0.0001, **args):
+class MobileNet_Lightning(plight.LightningModule):
+    def __init__(
+        self, learning_rate=0.001, scheduler_patience=5, weight_decay=0.0001, **args
+    ):
 
         super().__init__()
         self.learning_rate = learning_rate
-        self.momentum = momentum
         self.weight_decay = weight_decay
-        self.model = Faster_RCNN(**args)
+        self.scheduler_patience = scheduler_patience
+        self.model = MobileNet(**args)
 
     def forward(self, x, *args):
 
@@ -75,12 +74,17 @@ class Faster_RCNN_Lightning(plight.LightningModule):
 
     def configure_optimizers(self):
 
-        return torch.optim.SGD(
-            self.model.parameters(),
-            lr=self.learning_rate,
-            momentum=self.momentum,
-            weight_decay=self.weight_decay,
+        optimizer = torch.optim.AdamW(
+            self.parameters(), lr=self.learning_rate, weight_decay=self.weight_decay
         )
+        scheduler = {
+            "scheduler": torch.optim.lr_scheduler.ReduceLROnPlateau(
+                optimizer, patience=self.scheduler_patience, mode="max"
+            ),
+            "monitor": "mIOU",
+        }
+
+        return [optimizer], [scheduler]
 
     def training_step(self, batch, batch_idx):
 
