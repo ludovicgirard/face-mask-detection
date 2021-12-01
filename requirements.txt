@@ -1,0 +1,7 @@
+torch
+torchvision
+pytorch_lightning
+opencv-python
+torchmetrics>=0.6.0
+matplotlib
+Pillow

@@ -4,6 +4,7 @@
 
 ```
 git clone https://github.com/ludovicgirard/face-mask-detection
+pip3 install -r face-mask-detection/requirements.txt
 ```
 By default, only the trained MobileNet V3 weights are installed.
 
