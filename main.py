@@ -9,7 +9,7 @@ import sys
 PARENT = os.path.dirname(__file__)
 sys.path.append(PARENT)
 
-import models
+import backbones as models
 
 LABEL_TO_COLOR = {
     "without_mask": "red",
@@ -33,7 +33,7 @@ def parse_args():
         "-b",
         "--backbone",
         action="store",
-        help="Options are : MobileNet, Faster_RCNN, RetinaNet",
+        help="Options are : MobileNet, Faster_RCNN, RetinaNet, YOLO",
     )
     parser.add_argument("-d", "--device", action="store")
     parser.add_argument("-r", "--resolution", action="store", type=int, default=1)
@@ -88,6 +88,9 @@ def parse_args():
         MODEL = models.RetinaNetLightning(nms_threshold=0.2, pretrained=False)
         MODEL.load_state_dict(torch.load(os.path.join(PARENT, "weights/retinanet.pt")))
         MODEL.model.set_score_threshold(0.3)
+
+    elif args.backbone.lower() == 'yolo':
+        MODEL = models.Yolov5(weights="weights/yolo.pt")
 
     else:
         print(
