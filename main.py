@@ -98,9 +98,8 @@ def parse_args():
 
     if AUTO_SELECT_MODEL:
 
-        MODEL = models.MobileNet_Lightning(nms_threshold=0.2, score_thresh=0.4)
-        MODEL.load_state_dict(torch.load(os.path.join(PARENT, "weights/mobilenet.pt")))
-        print("Model MobileNet V3 was selected automatically")
+        MODEL = models.Yolov5(weights="weights/yolo.pt")
+        print("Model YOLO was selected automatically")
 
     MODEL.eval()
     MODEL.model.inference_mode(True)
@@ -144,7 +143,10 @@ def display_video_feed(model, device, video, output, downsample):
         img = cv2.flip(img, 1)
 
         img_tensor = (
-            torch.tensor(cv2.cvtColor(img, cv2.COLOR_BGR2RGB)).permute(2, 0, 1).unsqueeze(0).to(device, torch.float)
+            torch.tensor(cv2.cvtColor(img, cv2.COLOR_BGR2RGB))
+            .permute(2, 0, 1)
+            .unsqueeze(0)
+            .to(device, torch.float)
             / 255
         )
 
@@ -164,7 +166,8 @@ def display_video_feed(model, device, video, output, downsample):
             break  # esc to quit
 
     cam.release()
-    writer.release()
+    if output is not None:
+        writer.release()
     cv2.destroyAllWindows()
 
 
