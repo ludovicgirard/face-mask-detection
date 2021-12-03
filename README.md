@@ -29,7 +29,7 @@ The following arguments and flags are available:
 | [RetinaNet](https://arxiv.org/abs/1708.02002) w/ ResNet50 | 0.6545 | 23.3 |
 | [Faster R-CNN](https://arxiv.org/abs/1506.01497) w/ ResNet50 | 0.6799 | 22.1 |
 | [Faster R-CNN](https://arxiv.org/abs/1506.01497) w/ MobileNet V3 |0.5643| **73.0** |
-| [YOLO|(https://arxiv.org/abs/1506.02640)| **0.7595** ||
+| [YOLO](https://arxiv.org/abs/1506.02640)| **0.7595** ||
 
 ## Dataset
 
