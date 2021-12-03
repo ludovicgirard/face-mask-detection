@@ -144,7 +144,7 @@ def display_video_feed(model, device, video, output, downsample):
         img = cv2.flip(img, 1)
 
         img_tensor = (
-            torch.tensor(img).permute(2, 0, 1).unsqueeze(0).to(device, torch.float)
+            torch.tensor(cv2.cvtColor(img, cv2.COLOR_BGR2RGB)).permute(2, 0, 1).unsqueeze(0).to(device, torch.float)
             / 255
         )
 
