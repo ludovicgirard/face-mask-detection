@@ -6,7 +6,7 @@
 git clone https://github.com/ludovicgirard/face-mask-detection
 pip3 install -r face-mask-detection/requirements.txt
 ```
-By default, only the trained MobileNet V3 weights are installed.
+By default, only the trained MobileNet V3 and YOLO weights are installed.
 
 ## Usage
 
@@ -18,7 +18,7 @@ The following arguments and flags are available:
 - `-w` or `--webcam` indicates to read the video directly from the webcam. This option has priority over `--video`
 - `-v [path]` or `--video [path]` indicates the path to a video to read. Either `-w` or `-v` must be present.
 - `-o [path]` or `--output [path]` indicates the path to the output video. If absent, the video is displayed but not written to disk.
-- `-b [backbone]` or `--backbone [backbone]` can be one of : MobileNet, RetinaNet or Faster_RCNN. Default: MobileNet. Case insensitive.
+- `-b [backbone]` or `--backbone [backbone]` can be one of : MobileNet, RetinaNet, Faster_RCNN and YOLO. Default: MobileNet. Case insensitive.
 - `-d [device]` or `--device [device]` can be one of: CPU or CUDA. Default: CUDA if available, else CPU.
 - `-r [int]` or `--resolution [int]` resolution reduction factor. Implemented to try and reduce compute time, but turns out it doesn't do much. Default : 1.
 

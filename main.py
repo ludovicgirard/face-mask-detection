@@ -80,16 +80,14 @@ def parse_args():
         MODEL = models.MobileNet_Lightning(
             nms_threshold=0.2, score_thresh=0.4, pretrained=False
         )
-        MODEL.load_state_dict(
-            torch.load(os.path.join(PARENT, "weights/faster_rcnn_mobilenet.pt"))
-        )
+        MODEL.load_state_dict(torch.load(os.path.join(PARENT, "weights/mobilenet.pt")))
 
     elif args.backbone.lower() == "retinanet":
         MODEL = models.RetinaNetLightning(nms_threshold=0.2, pretrained=False)
         MODEL.load_state_dict(torch.load(os.path.join(PARENT, "weights/retinanet.pt")))
         MODEL.model.set_score_threshold(0.3)
 
-    elif args.backbone.lower() == 'yolo':
+    elif args.backbone.lower() == "yolo":
         MODEL = models.Yolov5(weights="weights/yolo.pt")
 
     else:
@@ -101,9 +99,7 @@ def parse_args():
     if AUTO_SELECT_MODEL:
 
         MODEL = models.MobileNet_Lightning(nms_threshold=0.2, score_thresh=0.4)
-        MODEL.load_state_dict(
-            torch.load(os.path.join(PARENT, "weights/faster_rcnn_mobilenet.pt"))
-        )
+        MODEL.load_state_dict(torch.load(os.path.join(PARENT, "weights/mobilenet.pt")))
         print("Model MobileNet V3 was selected automatically")
 
     MODEL.eval()
