@@ -24,12 +24,12 @@ The following arguments and flags are available:
 
 ## Models
 
-| **Model** | **mAP@0.5** | **Average frames per second**|
-|:---:|:---:|:---:|
-| [RetinaNet](https://arxiv.org/abs/1708.02002) w/ ResNet50 | 0.6545 | 23.3 |
-| [Faster R-CNN](https://arxiv.org/abs/1506.01497) w/ ResNet50 | 0.6799 | 22.1 |
-| [Faster R-CNN](https://arxiv.org/abs/1506.01497) w/ MobileNet V3 |0.5643| 73.0 |
-| [YOLO](https://arxiv.org/abs/1506.02640)| **0.7595** |**187.5**|
+| **Model** | **mAP@0.5** | **mAP@0.75** | **mAP for the *no mask* class"**|**mAP for the *mask* class"**|**mAP for the *mask worn incorrectly* class**| **Average frames per second**|
+|:---:|:---:|:---:|:---:|:---:|:---:|:---:|
+| [RetinaNet](https://arxiv.org/abs/1708.02002) w/ ResNet50 | 0.6545 | 0.4823 |0.3780 |0.6085 |0.2725 | 23.3 |
+| [Faster R-CNN](https://arxiv.org/abs/1506.01497) w/ ResNet50 | 0.6799 |0.4865 |0.4509 |0.6063 |0.2022 | 22.1 |
+| [Faster R-CNN](https://arxiv.org/abs/1506.01497) w/ MobileNet V3 |0.5643| 0.2993 |0.2951 |0.5228 | 0.0555 | 73.0 |
+| [YOLO](https://arxiv.org/abs/1506.02640)| **0.9188** | **0.8127** | **0.6664** | **0.7416** | **0.7187** |**187.5**|
 
 ## Dataset
 
