@@ -48,6 +48,8 @@ def run_on_colab():
         labels = inference[0]["labels"].to("cpu").detach()
         scores = inference[0]["scores"].to("cpu").detach()
 
+        bbox_array = None
+
         for idx2 in range(boxes.shape[0]):
             box = boxes[idx2]
             label = labels[idx2]
@@ -64,9 +66,7 @@ def run_on_colab():
 
 
         # convert overlay of bbox into bytes
-        bbox_bytes = bbox_to_bytes(bbox_array)
-        # update bbox so next frame gets new overlay
-        bbox = bbox_bytes
+        bbox = bbox_to_bytes(bbox_array)
 
 # from https://github.com/theAIGuysCode/colab-webcam
 # function to convert the JavaScript object into an OpenCV image
