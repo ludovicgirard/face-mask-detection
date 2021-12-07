@@ -2,14 +2,14 @@ import torch
 import torchmetrics
 
 
-def evaluate_mAP(model, dataloader):
+def evaluate_mAP(model, dataloader, **kwargs):
 
     device = "cuda:0" if torch.cuda.is_available() else "cpu"
 
     model.eval()
     model.to(device)
 
-    metric = torchmetrics.detection.map.MAP(compute_on_step=False)
+    metric = torchmetrics.detection.map.MAP(compute_on_step=False, **kwargs)
 
     for img, labels in dataloader:
 
