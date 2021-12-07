@@ -33,7 +33,6 @@ def run_on_colab():
 
         # convert JS response to OpenCV Image
         img = js_to_image(js_reply["img"])
-        img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
         img_tensor = (
             torch.tensor(img)
             .permute(2, 0, 1)
