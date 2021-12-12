@@ -2,9 +2,12 @@ import torch
 import torchmetrics
 import numpy as np
 
-def plot_pr_curve(model, dataloader, ax, label, iou_thres=0.5):
+CLASS_LABELS = {0: 'Without mask', 1: 'With mask', 2: 'With mask worn incorrectly'}
+CLASS_COLORS = {0: 'tab:red', 1: 'tab:green', 2: 'tab:blue'}
+
+def plot_pr_curve(model, dataloader, ax, iou_thres=0.5, per_class=False, **kwargs):
     """
-    Add precision-recall curve @ iou_thres to the given matplotlib ax object, with given label for the legend.
+    Add precision-recall curve @ iou_thres to the given matplotlib ax object.
     """
 
     device = "cuda:0" if torch.cuda.is_available() else "cpu"
@@ -28,10 +31,11 @@ def plot_pr_curve(model, dataloader, ax, label, iou_thres=0.5):
 
     overall, map, _ = metric._calculate(metric._get_classes())
 
-    print(map)
-
     recall = np.linspace(0, 1, 101)
-    precision = torch.mean(overall['precision'][0, :, :, 0, 0], axis=1)
+    precision = overall['precision'][0, :, :, 0, 0] # size 101 x number of classes
 
-    ax.plot(recall, precision, label=label)
-    
+    if per_class:
+        for class_index in range(3):
+            ax.plot(recall, precision[:, class_index], label=CLASS_LABELS[class_index], color=CLASS_COLORS[class_index])
+
+    ax.plot(recall, torch.mean(precision, axis=1), **kwargs)
